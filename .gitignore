@@ -4,9 +4,5 @@
 *.hdf5
 .DS_Store
 
-data/*/
-implementations/*/data
-
-implementations/*/saved_models
 
 __pycache__
