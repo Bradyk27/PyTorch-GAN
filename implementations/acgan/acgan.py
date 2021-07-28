@@ -14,7 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
-os.makedirs("images", exist_ok=True)
+os.makedirs("MNIST", exist_ok=True)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
@@ -49,7 +49,7 @@ class Generator(nn.Module):
 
         self.label_emb = nn.Embedding(opt.n_classes, opt.latent_dim)
 
-        self.init_size = opt.img_size // 4  # Initial size before upsampling
+        self.init_size = opt.img_size // 4  # Image pixel downsampling
         self.l1 = nn.Sequential(nn.Linear(opt.latent_dim, 128 * self.init_size ** 2))
 
         self.conv_blocks = nn.Sequential(
@@ -71,6 +71,7 @@ class Generator(nn.Module):
         out = self.l1(gen_input)
         out = out.view(out.shape[0], 128, self.init_size, self.init_size)
         img = self.conv_blocks(out)
+        print("Generator:", img.shape)
         return img
 
 

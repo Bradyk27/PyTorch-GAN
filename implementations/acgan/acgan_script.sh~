@@ -1,7 +1,0 @@
-#!/bin/bash
-
-#SBATCH -N 4
-#SBATCH --job-name=acgan
-#SBATCH --output=acgan.log
-#SBATCH --mail-type=ALL
-#SBATCH --mail-user=bradyakruse@gmail.com
