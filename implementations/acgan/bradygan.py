@@ -365,7 +365,8 @@ def save_skel(n_row, batches_done): #Saving as pngs? Really have no clue how to 
         shape=(len(labels),))
     
     gen_skel = gen_skel.unsqueeze(4)
-
+    if cuda:
+        gen_skel = gen_skel.cpu()
     for i in range(len(labels)):
         fp[i, :, :, :, :] = gen_skel[i].detach().numpy()
         fl[i] = 3 #Num frames
