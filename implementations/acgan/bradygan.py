@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import torch
 
 import pickle
+from numpy.lib.format import open_memmap
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
@@ -336,11 +337,12 @@ LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
 def save_skel(n_row, batches_done): #Saving as pngs? Really have no clue how to save / output these. Will save for later. Little curious what these pngs will look like lol
     """Saves a grid of generated digits ranging from 0 to n_classes"""
     # Sample noise
-    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row ** 2, opt.latent_dim))))
+    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row, opt.latent_dim))))
     # Get labels ranging from 0 to n_classes for n rows
-    labels = np.array([num for _ in range(n_row) for num in range(n_row)])
+    labels = np.array([num for num in range(n_row)])
     labels = Variable(LongTensor(labels))
     gen_skel = generator(z, labels)
+    print(gen_skel.detach().numpy())
     save_image(gen_skel.data, "skels/%d.png" % batches_done, nrow=n_row, normalize=True)
 
 # ----------
@@ -405,8 +407,9 @@ for epoch in range(opt.n_epochs):
         optimizer_D.step()
 
         print(
-            "[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %d%%] [G loss: %f]"
-            % (epoch, opt.n_epochs, i, len(dataloader), d_loss.item(), 100 * d_acc, g_loss.item())
+            "[Epoch %d/%d] [Batch %d/%d]\n[D Adv_Real loss: %f, D Aux_Real loss: %f, D Adv_Fake loss: %f, D Aux_Fake loss: %f, acc: %d%%]\n[G Adv loss: %f, G Aux loss: %f]\n"
+            % (epoch, opt.n_epochs, i, len(dataloader), adversarial_loss(real_pred, valid), auxiliary_loss(real_aux, labels),
+             adversarial_loss(fake_pred, fake), auxiliary_loss(fake_aux, gen_labels), 100 * d_acc, adversarial_loss(validity, valid), auxiliary_loss(pred_label, gen_labels))
         )
         batches_done = epoch * len(dataloader) + i
         if batches_done % opt.sample_interval == 0:
