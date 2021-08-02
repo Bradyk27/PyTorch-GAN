@@ -2,6 +2,7 @@ import argparse
 import os
 import numpy as np
 import math
+import pandas as pd
 
 import torchvision.transforms as transforms
 from torchvision.utils import save_image
@@ -337,13 +338,37 @@ LongTensor = torch.cuda.LongTensor if cuda else torch.LongTensor
 def save_skel(n_row, batches_done): #Saving as pngs? Really have no clue how to save / output these. Will save for later. Little curious what these pngs will look like lol
     """Saves a grid of generated digits ranging from 0 to n_classes"""
     # Sample noise
-    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row, opt.latent_dim))))
+    z = Variable(FloatTensor(np.random.normal(0, 1, (n_row**2, opt.latent_dim))))
     # Get labels ranging from 0 to n_classes for n rows
-    labels = np.array([num for num in range(n_row)])
+    labels = np.array([num for _ in range(n_row) for num in range(n_row)]) ## Can change this in order to get more samples, if we'd like. Probably a good idea tbh.
     labels = Variable(LongTensor(labels))
     gen_skel = generator(z, labels)
-    print(gen_skel.detach().numpy())
-    save_image(gen_skel.data, "skels/%d.png" % batches_done, nrow=n_row, normalize=True)
+    #print(gen_skel.detach().numpy())
+
+    sample_name = ['sample1', 'sample2', 'sample3', 'sample4', 'sample5', 'sample6', 'sample7', 'sample8', 'sample9']
+    for i in range(8): ## Change this in order to get more samples
+        sample_name.extend(['sample1', 'sample2', 'sample3', 'sample4', 'sample5', 'sample6', 'sample7', 'sample8', 'sample9'])
+
+    with open('skels/{}_label.pkl'.format(batches_done), 'wb') as f:
+        pickle.dump((sample_name, list([label+1 for label in labels.tolist()])), f)
+
+    fp = open_memmap(
+        'skels/{}_data.npy'.format(batches_done),
+        dtype='float32',
+        mode='w+',
+        shape=(len(labels), 3, 3, 13, 1)) # Num samples, Num channels, Num Frames (might need to make 20...), Num Joints, Num Bodies
+
+    fl = open_memmap(
+        'skels/{}_num_frame.npy'.format(batches_done),
+        dtype='int',
+        mode='w+',
+        shape=(len(labels),))
+    
+    gen_skel = gen_skel.unsqueeze(4)
+
+    for i in range(len(labels)):
+        fp[i, :, :, :, :] = gen_skel[i].detach().numpy()
+        fl[i] = 3 #Num frames
 
 # ----------
 #  Training
