@@ -19,7 +19,7 @@ import pickle
 from numpy.lib.format import open_memmap
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_epochs", type=int, default=200, help="number of epochs of training")
+parser.add_argument("--n_epochs", type=int, default=1, help="number of epochs of training")
 parser.add_argument("--batch_size", type=int, default=64, help="size of the batches")
 parser.add_argument("--lr", type=float, default=0.0002, help="adam: learning rate")
 parser.add_argument("--b1", type=float, default=0.5, help="adam: decay of first order momentum of gradient")
@@ -179,6 +179,7 @@ class Feeder(torch.utils.data.Dataset): #Borrowed from HCN-PyTorch
         if self.normalization:
             # data_numpy = (data_numpy - self.mean_map) / self.std_map
             # be careful the value is for NTU_RGB-D, for other dataset, please replace with value from function 'get_mean_map'
+            # probably need to fix this at some point lol
             if self.origin_transfer == 0:
                 min_map, max_map = np.array([-4.9881773, -2.939787, -4.728529]), np.array(
                     [5.826573, 2.391671, 4.824233])
@@ -375,6 +376,8 @@ def save_skel(n_row, batches_done): #Saving as pngs? Really have no clue how to 
 #  Training
 # ----------
 
+df = pd.DataFrame(columns=["Epoch", "D_Adv_Real", "D_Aux_Real", "D_Adv_Fake", "D_Aux_Fake" , "acc", "G_Adv", "G_Aux"])
+
 for epoch in range(opt.n_epochs):
     for i, (skel, labels) in enumerate(dataloader):
         skel = skel.squeeze()
@@ -398,7 +401,7 @@ for epoch in range(opt.n_epochs):
         z = Variable(FloatTensor(np.random.normal(0, 1, (batch_size, opt.latent_dim))))
         gen_labels = Variable(LongTensor(np.random.randint(0, opt.n_classes, batch_size)))
 
-        # Generate a batch of images
+        # Generate a batch of skeletons
         gen_skel = generator(z, gen_labels)
         # Loss measures generator's ability to fool the discriminator
         validity, pred_label = discriminator(gen_skel)
@@ -413,11 +416,11 @@ for epoch in range(opt.n_epochs):
 
         optimizer_D.zero_grad()
 
-        # Loss for real images
+        # Loss for real skeletons
         real_pred, real_aux = discriminator(real_skel)
         d_real_loss = (adversarial_loss(real_pred, valid) + auxiliary_loss(real_aux, labels)) / 2
 
-        # Loss for fake images
+        # Loss for fake skeletons
         fake_pred, fake_aux = discriminator(gen_skel.detach())
         d_fake_loss = (adversarial_loss(fake_pred, fake) + auxiliary_loss(fake_aux, gen_labels)) / 2
 
@@ -437,6 +440,12 @@ for epoch in range(opt.n_epochs):
             % (epoch, opt.n_epochs, i, len(dataloader), adversarial_loss(real_pred, valid), auxiliary_loss(real_aux, labels),
              adversarial_loss(fake_pred, fake), auxiliary_loss(fake_aux, gen_labels), 100 * d_acc, adversarial_loss(validity, valid), auxiliary_loss(pred_label, gen_labels))
         )
+
+        temp = [epoch, float(adversarial_loss(real_pred, valid)), float(auxiliary_loss(real_aux, labels)), float(adversarial_loss(fake_pred, fake)), float(auxiliary_loss(fake_aux, gen_labels)), round(100 * d_acc, 2), float(adversarial_loss(validity, valid)), float(auxiliary_loss(pred_label, gen_labels))]
+        df.loc[len(df)] = temp
+
         batches_done = epoch * len(dataloader) + i
         if batches_done % opt.sample_interval == 0:
-            save_skel(n_row=opt.n_classes, batches_done=batches_done) #Fix this!! I have no clue if it's actually saving or not
+            save_skel(n_row=opt.n_classes, batches_done=batches_done)
+
+df.to_csv("Loss_Data.csv")
